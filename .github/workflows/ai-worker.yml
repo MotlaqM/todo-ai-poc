@@ -14,6 +14,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      id-token: write   # 🔑 REQUIRED for Claude Code Action
 
     steps:
       - name: Checkout repo
@@ -23,6 +24,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}  # 🔑 Explicit GitHub auth
           prompt: |
             You are Claude Code running headlessly inside GitHub Actions.
 
