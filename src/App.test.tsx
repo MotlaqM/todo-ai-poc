@@ -97,6 +97,67 @@ describe('App', () => {
     expect(checkbox).not.toBeChecked();
   });
 
+  it('deletes a todo when Delete button is clicked', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    // Add two todos
+    const input = screen.getByPlaceholderText('Enter a todo...');
+    await user.type(input, 'First task{Enter}');
+    await user.type(input, 'Second task{Enter}');
+
+    // Verify both todos exist
+    expect(screen.getByText('First task')).toBeInTheDocument();
+    expect(screen.getByText('Second task')).toBeInTheDocument();
+
+    // Click Delete on first todo
+    const deleteButtons = screen.getAllByText('Delete');
+    await user.click(deleteButtons[0]);
+
+    // First todo should be removed
+    expect(screen.queryByText('First task')).not.toBeInTheDocument();
+    // Second todo should still exist
+    expect(screen.getByText('Second task')).toBeInTheDocument();
+  });
+
+  it('deletes all todos and shows empty state', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    // Add a todo
+    await user.type(screen.getByPlaceholderText('Enter a todo...'), 'Only task{Enter}');
+    expect(screen.getByText('Only task')).toBeInTheDocument();
+
+    // Delete it
+    await user.click(screen.getByText('Delete'));
+
+    // Should show empty state
+    expect(screen.queryByText('Only task')).not.toBeInTheDocument();
+    expect(screen.getByText(/No todos yet/i)).toBeInTheDocument();
+  });
+
+  it('persists deletion to localStorage', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<App />);
+
+    // Add two todos
+    const input = screen.getByPlaceholderText('Enter a todo...');
+    await user.type(input, 'Task A{Enter}');
+    await user.type(input, 'Task B{Enter}');
+
+    // Delete first todo
+    const deleteButtons = screen.getAllByText('Delete');
+    await user.click(deleteButtons[0]);
+
+    // Unmount and remount to simulate page reload
+    unmount();
+    render(<App />);
+
+    // Only Task B should exist after reload
+    expect(screen.queryByText('Task A')).not.toBeInTheDocument();
+    expect(screen.getByText('Task B')).toBeInTheDocument();
+  });
+
   it('persists todos to localStorage', async () => {
     const user = userEvent.setup();
     const { unmount } = render(<App />);
