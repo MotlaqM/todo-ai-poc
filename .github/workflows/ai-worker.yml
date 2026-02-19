@@ -19,41 +19,26 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Claude Code CLI
-        run: npm install -g @anthropic-ai/claude-code
-
       - name: Run Claude Code
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: |
-          claude-code <<'EOF'
-          You are Claude Code running headlessly inside GitHub Actions.
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are Claude Code running headlessly inside GitHub Actions.
 
-          Context:
-          - This is a small Vite + React + TypeScript To-Do app.
-          - CI is enforced and must pass.
-          - Follow AI_PLAYBOOK.md strictly.
+            Context:
+            - This is a small Vite + React + TypeScript To-Do app.
+            - CI is enforced and must pass.
+            - Follow AI_PLAYBOOK.md strictly.
 
-          Task:
-          ${{ inputs.ticket }}
+            Task:
+            ${{ inputs.ticket }}
 
-          Rules:
-          - Create a new branch.
-          - Keep changes minimal and scoped.
-          - Update tests if tests exist.
-          - Ensure build and tests pass.
-          - Open a pull request against main.
-          - Do NOT merge.
-          - Stop after opening the PR.
-          EOF
-
-      - name: Confirm completion
-        run: echo "Claude Code run completed"
+            Rules:
+            - Create a new branch.
+            - Keep changes minimal and scoped.
+            - Update tests if tests exist.
+            - Ensure build and tests pass.
+            - Open a pull request against main.
+            - Do NOT merge.
+            - Stop after opening the PR.
