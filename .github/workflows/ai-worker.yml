@@ -1,0 +1,54 @@
+name: AI Worker (Claude Code)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ticket:
+        description: "Work ticket / task description"
+        required: true
+        type: string
+
+jobs:
+  ai-worker:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Claude Code
+        uses: anthropic/claude-code-action@v1
+        with:
+          prompt: |
+            You are Claude Code running headlessly inside GitHub Actions.
+
+            Context:
+            - This is a small Vite + React + TypeScript To-Do app.
+            - CI is enforced and must pass.
+            - Follow AI_PLAYBOOK.md strictly.
+
+            Task:
+            ${{ inputs.ticket }}
+
+            Rules:
+            - Create a new branch.
+            - Keep changes minimal and scoped.
+            - Update tests if tests exist.
+            - Ensure build and tests pass.
+            - Open a pull request against main.
+            - Do NOT merge.
+            - Stop after opening the PR.
+
+      - name: Confirm completion
+        run: echo "Claude Code run completed"
