@@ -40,6 +40,10 @@ function App() {
     );
   };
 
+  const handleDelete = (id: string) => {
+    setTodos(todos.filter((todo) => todo.id !== id));
+  };
+
   return (
     <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
       <h1>To-Do List</h1>
@@ -67,6 +71,9 @@ function App() {
               marginBottom: '8px',
               border: '1px solid #ccc',
               borderRadius: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
             }}
           >
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -84,6 +91,7 @@ function App() {
                 {todo.text}
               </span>
             </label>
+            <button onClick={() => handleDelete(todo.id)}>Delete</button>
           </li>
         ))}
       </ul>
