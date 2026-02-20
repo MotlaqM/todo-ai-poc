@@ -158,6 +158,49 @@ describe('App', () => {
     expect(screen.getByText('Task B')).toBeInTheDocument();
   });
 
+  it('shows Clear All button only when todos exist', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(screen.queryByText('Clear All')).not.toBeInTheDocument();
+
+    await user.type(screen.getByPlaceholderText('Enter a todo...'), 'Task{Enter}');
+    expect(screen.getByText('Clear All')).toBeInTheDocument();
+  });
+
+  it('clears all todos when Clear All is clicked', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const input = screen.getByPlaceholderText('Enter a todo...');
+    await user.type(input, 'First{Enter}');
+    await user.type(input, 'Second{Enter}');
+
+    await user.click(screen.getByText('Clear All'));
+
+    expect(screen.queryByText('First')).not.toBeInTheDocument();
+    expect(screen.queryByText('Second')).not.toBeInTheDocument();
+    expect(screen.getByText(/No todos yet/i)).toBeInTheDocument();
+  });
+
+  it('persists clear all to localStorage', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<App />);
+
+    const input = screen.getByPlaceholderText('Enter a todo...');
+    await user.type(input, 'Task A{Enter}');
+    await user.type(input, 'Task B{Enter}');
+
+    await user.click(screen.getByText('Clear All'));
+
+    unmount();
+    render(<App />);
+
+    expect(screen.queryByText('Task A')).not.toBeInTheDocument();
+    expect(screen.queryByText('Task B')).not.toBeInTheDocument();
+    expect(screen.getByText(/No todos yet/i)).toBeInTheDocument();
+  });
+
   it('persists todos to localStorage', async () => {
     const user = userEvent.setup();
     const { unmount } = render(<App />);

@@ -44,6 +44,10 @@ function App() {
     setTodos(todos.filter((todo) => todo.id !== id));
   };
 
+  const handleClearAll = () => {
+    setTodos([]);
+  };
+
   return (
     <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
       <h1>To-Do List</h1>
@@ -95,6 +99,12 @@ function App() {
           </li>
         ))}
       </ul>
+
+      {todos.length > 0 && (
+        <button onClick={handleClearAll} style={{ marginTop: '8px' }}>
+          Clear All
+        </button>
+      )}
 
       {todos.length === 0 && (
         <p style={{ color: '#888', fontStyle: 'italic' }}>No todos yet. Add one above!</p>
