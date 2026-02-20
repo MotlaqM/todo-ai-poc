@@ -1,20 +1,26 @@
 name: AI Worker (Claude Code)
 
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+
 on:
-  workflow_dispatch:
-    inputs:
-      ticket:
-        description: "Work ticket / task description"
-        required: true
-        type: string
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened]
 
 jobs:
-  ai-worker:
+  claude:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'issues' && contains(github.event.issue.body, '@claude'))
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-      id-token: write   # 🔑 REQUIRED for Claude Code Action
 
     steps:
       - name: Checkout repo
@@ -24,23 +30,6 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}  # 🔑 Explicit GitHub auth
-          prompt: |
-            You are Claude Code running headlessly inside GitHub Actions.
-
-            Context:
-            - This is a small Vite + React + TypeScript To-Do app.
-            - CI is enforced and must pass.
-            - Follow AI_PLAYBOOK.md strictly.
-
-            Task:
-            ${{ inputs.ticket }}
-
-            Rules:
-            - Create a new branch.
-            - Keep changes minimal and scoped.
-            - Update tests if tests exist.
-            - Ensure build and tests pass.
-            - Open a pull request against main.
-            - Do NOT merge.
-            - Stop after opening the PR.
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          trigger_phrase: "@claude"
+          claude_args: "--max-turns 10"
