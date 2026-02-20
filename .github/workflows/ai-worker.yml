@@ -31,15 +31,40 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Run Claude Code (branch + commit + push only)
+      - name: Run Claude Code
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           trigger_phrase: "@claude"
-          apply_changes: true
           show_full_output: true
-          claude_args: "--max-turns 35"
+          claude_args: "--max-turns 25"
+          allowed_tools: |
+            Edit,
+            MultiEdit,
+            Glob,
+            Grep,
+            LS,
+            Read,
+            Write,
+            Bash(git add:*),
+            Bash(git checkout:*),
+            Bash(git commit:*),
+            Bash(git push:*),
+            Bash(git pull:*),
+            Bash(git fetch:*),
+            Bash(git status:*),
+            Bash(git diff:*),
+            Bash(git log:*),
+            Bash(git branch:*),
+            Bash(git rm:*),
+            Bash(gh issue view:*),
+            Bash(gh issue list:*),
+            Bash(npm install:*),
+            Bash(npm run:*),
+            Bash(npm test:*),
+            Bash(cat:*),
+            Bash(echo:*)
           prompt: |
             You are Claude Code running inside GitHub Actions.
 
