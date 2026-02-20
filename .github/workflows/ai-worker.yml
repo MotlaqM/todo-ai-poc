@@ -21,13 +21,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
+    env:
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+      BRANCH: claude/issue-${{ github.event.issue.number }}
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Run Claude Code (branch + commit only)
+      - name: Run Claude Code (branch + commit + push only)
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -35,44 +39,44 @@ jobs:
           trigger_phrase: "@claude"
           apply_changes: true
           show_full_output: true
-          claude_args: "--max-turns 25"
+          claude_args: "--max-turns 35"
           prompt: |
             You are Claude Code running inside GitHub Actions.
 
+            Use the GitHub event payload for context; do NOT call gh issue view or web APIs.
+
+            Branching rules (non-negotiable):
+            - The branch MUST be named exactly: ${{ env.BRANCH }}
+            - Create/reset branch:
+              git checkout -B "${{ env.BRANCH }}"
+            - Do not append timestamps or any suffix.
+            - After making changes, commit and push with:
+              git push -u origin "${{ env.BRANCH }}" --force-with-lease
+
             Objective:
-            - Implement the requested change.
-            - Create and checkout a branch named exactly:
-              claude/issue-${{ github.event.issue.number }}
-            - Commit and push your changes to that branch.
+            - Implement the requested change from the issue body/comment.
+            - Commit and push your changes.
             - Do NOT open a pull request. The workflow will handle PR creation.
 
-            Critical:
-            - If you make code changes, you MUST commit and push them.
-            - Do not create any other branch name.
-
-      - name: Create PR for this issue
+      - name: Create PR (workflow-owned)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
           set -euo pipefail
 
-          BRANCH="claude/issue-${ISSUE_NUMBER}"
           echo "Expected branch: ${BRANCH}"
 
-          git fetch origin "${BRANCH}:${BRANCH}" || {
+          if ! git ls-remote --exit-code --heads origin "${BRANCH}" >/dev/null 2>&1; then
             echo "Branch ${BRANCH} not found on origin. Nothing to PR."
             exit 0
-          }
+          fi
 
-          # Check if PR already exists
           EXISTING="$(gh pr list --head "${BRANCH}" --state open --json number --jq 'length')"
           if [ "${EXISTING}" != "0" ]; then
             echo "PR already exists for ${BRANCH}. Skipping."
             exit 0
           fi
 
-          # Create PR
           gh pr create \
             --head "${BRANCH}" \
             --base "main" \
