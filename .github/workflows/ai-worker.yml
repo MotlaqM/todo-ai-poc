@@ -24,12 +24,58 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Run Claude Code
+      - name: Run Claude Code (branch + commit only)
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           trigger_phrase: "@claude"
+          apply_changes: true
           show_full_output: true
-          claude_args: "--debug --max-turns 25"
+          claude_args: "--max-turns 25"
+          prompt: |
+            You are Claude Code running inside GitHub Actions.
+
+            Objective:
+            - Implement the requested change.
+            - Create and checkout a branch named exactly:
+              claude/issue-${{ github.event.issue.number }}
+            - Commit and push your changes to that branch.
+            - Do NOT open a pull request. The workflow will handle PR creation.
+
+            Critical:
+            - If you make code changes, you MUST commit and push them.
+            - Do not create any other branch name.
+
+      - name: Create PR for this issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+
+          BRANCH="claude/issue-${ISSUE_NUMBER}"
+          echo "Expected branch: ${BRANCH}"
+
+          git fetch origin "${BRANCH}:${BRANCH}" || {
+            echo "Branch ${BRANCH} not found on origin. Nothing to PR."
+            exit 0
+          }
+
+          # Check if PR already exists
+          EXISTING="$(gh pr list --head "${BRANCH}" --state open --json number --jq 'length')"
+          if [ "${EXISTING}" != "0" ]; then
+            echo "PR already exists for ${BRANCH}. Skipping."
+            exit 0
+          fi
+
+          # Create PR
+          gh pr create \
+            --head "${BRANCH}" \
+            --base "main" \
+            --title "AI: Issue #${ISSUE_NUMBER}" \
+            --body "Automated PR for issue #${ISSUE_NUMBER}.\n\nTriggered via @claude."
+          echo "PR created for ${BRANCH}."
