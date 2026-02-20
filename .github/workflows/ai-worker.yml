@@ -31,5 +31,6 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           trigger_phrase: "@claude"
+          apply_changes: true
           show_full_output: true
           claude_args: "--debug --max-turns 10"
