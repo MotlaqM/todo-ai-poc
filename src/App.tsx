@@ -44,6 +44,10 @@ function App() {
     setTodos(todos.filter((todo) => todo.id !== id));
   };
 
+  const handleClearAll = () => {
+    setTodos([]);
+  };
+
   return (
     <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
       <h1>To-Do List</h1>
@@ -59,6 +63,9 @@ function App() {
         />
         <button onClick={handleAdd} style={{ padding: '8px 16px' }}>
           Add
+        </button>
+        <button onClick={handleClearAll} style={{ padding: '8px 16px', marginLeft: '8px' }}>
+          Clear All
         </button>
       </div>
 
