@@ -136,6 +136,53 @@ describe('App', () => {
     expect(screen.getByText(/No todos yet/i)).toBeInTheDocument();
   });
 
+  it('clears all todos when Clear All button is clicked', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    // Add multiple todos
+    const input = screen.getByPlaceholderText('Enter a todo...');
+    await user.type(input, 'Task 1{Enter}');
+    await user.type(input, 'Task 2{Enter}');
+    await user.type(input, 'Task 3{Enter}');
+
+    // Verify todos exist
+    expect(screen.getByText('Task 1')).toBeInTheDocument();
+    expect(screen.getByText('Task 2')).toBeInTheDocument();
+    expect(screen.getByText('Task 3')).toBeInTheDocument();
+
+    // Click Clear All
+    await user.click(screen.getByText('Clear All'));
+
+    // All todos should be removed
+    expect(screen.queryByText('Task 1')).not.toBeInTheDocument();
+    expect(screen.queryByText('Task 2')).not.toBeInTheDocument();
+    expect(screen.queryByText('Task 3')).not.toBeInTheDocument();
+    expect(screen.getByText(/No todos yet/i)).toBeInTheDocument();
+  });
+
+  it('persists Clear All to localStorage', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<App />);
+
+    // Add todos
+    const input = screen.getByPlaceholderText('Enter a todo...');
+    await user.type(input, 'Task A{Enter}');
+    await user.type(input, 'Task B{Enter}');
+
+    // Clear all
+    await user.click(screen.getByText('Clear All'));
+
+    // Unmount and remount to simulate page reload
+    unmount();
+    render(<App />);
+
+    // Should still be empty after reload
+    expect(screen.queryByText('Task A')).not.toBeInTheDocument();
+    expect(screen.queryByText('Task B')).not.toBeInTheDocument();
+    expect(screen.getByText(/No todos yet/i)).toBeInTheDocument();
+  });
+
   it('persists deletion to localStorage', async () => {
     const user = userEvent.setup();
     const { unmount } = render(<App />);
