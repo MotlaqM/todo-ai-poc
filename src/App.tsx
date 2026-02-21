@@ -51,6 +51,7 @@ function App() {
   return (
     <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
       <h1>To-Do List</h1>
+      <p>Total todos: {todos.length}</p>
 
       <div style={{ marginBottom: '20px' }}>
         <input
