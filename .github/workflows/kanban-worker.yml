@@ -64,10 +64,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ISSUE_NUMBER=$(gh issue create \
+          ISSUE_URL=$(gh issue create \
             --title "${{ steps.notion.outputs.title }}" \
-            --body "${{ steps.notion.outputs.description }}" \
-            --json number --jq '.number')
+            --body "${{ steps.notion.outputs.description }}")
+          ISSUE_NUMBER=$(echo "$ISSUE_URL" | grep -oE '[0-9]+$')
           echo "number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
 
       # 4. Checkout + run Claude
