@@ -1,0 +1,152 @@
+name: Kanban Worker
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+
+jobs:
+  kanban:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # 1. Query Notion for items with "Build" status
+      - name: Poll Notion for Build tasks
+        id: notion
+        run: |
+          RESPONSE=$(curl -s -X POST \
+            "https://api.notion.com/v1/databases/${{ vars.NOTION_DATABASE_ID }}/query" \
+            -H "Authorization: Bearer ${{ secrets.NOTION_API_KEY }}" \
+            -H "Notion-Version: 2022-06-28" \
+            -H "Content-Type: application/json" \
+            -d '{"filter":{"property":"Status","status":{"equals":"Build"}},"page_size":1}')
+
+          PAGE_ID=$(echo "$RESPONSE" | jq -r '.results[0].id // empty')
+          if [ -z "$PAGE_ID" ]; then
+            echo "No Build tasks found."
+            echo "found=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          TITLE=$(echo "$RESPONSE" | jq -r '.results[0].properties.Name.title[0].plain_text // "Untitled"')
+          DESC=$(echo "$RESPONSE" | jq -r '[.results[0].properties.Description.rich_text[].plain_text] | join("")' 2>/dev/null || echo "")
+
+          echo "found=true" >> $GITHUB_OUTPUT
+          echo "page_id=$PAGE_ID" >> $GITHUB_OUTPUT
+          echo "title=$TITLE" >> $GITHUB_OUTPUT
+          {
+            echo "description<<EOFDELIM"
+            echo "$DESC"
+            echo "EOFDELIM"
+          } >> $GITHUB_OUTPUT
+
+      # 2. Mark as "In Progress" in Notion (prevents re-processing)
+      - name: Set Notion status to In Progress
+        if: steps.notion.outputs.found == 'true'
+        run: |
+          curl -s -X PATCH \
+            "https://api.notion.com/v1/pages/${{ steps.notion.outputs.page_id }}" \
+            -H "Authorization: Bearer ${{ secrets.NOTION_API_KEY }}" \
+            -H "Notion-Version: 2022-06-28" \
+            -H "Content-Type: application/json" \
+            -d '{"properties":{"Status":{"status":{"name":"In Progress"}}}}'
+
+      # 3. Create GitHub issue
+      - name: Create GitHub issue
+        if: steps.notion.outputs.found == 'true'
+        id: issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ISSUE_NUMBER=$(gh issue create \
+            --title "${{ steps.notion.outputs.title }}" \
+            --body "${{ steps.notion.outputs.description }}" \
+            --json number --jq '.number')
+          echo "number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
+
+      # 4. Checkout + run Claude
+      - uses: actions/checkout@v4
+        if: steps.notion.outputs.found == 'true'
+        with:
+          fetch-depth: 0
+
+      - name: Run Claude Code
+        if: steps.notion.outputs.found == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          trigger_phrase: "@claude"
+          show_full_output: true
+          claude_args: "--max-turns 25"
+          allowed_tools: |
+            Edit,MultiEdit,Glob,Grep,LS,Read,Write,
+            Bash(git add:*),Bash(git checkout:*),Bash(git commit:*),
+            Bash(git push:*),Bash(git status:*),Bash(git diff:*),
+            Bash(git log:*),Bash(git branch:*),Bash(git rm:*),
+            Bash(npm install:*),Bash(npm run:*),Bash(npm test:*),
+            Bash(cat:*),Bash(echo:*)
+          prompt: |
+            You are Claude Code running inside GitHub Actions.
+
+            TASK: ${{ steps.notion.outputs.title }}
+
+            DESCRIPTION:
+            ${{ steps.notion.outputs.description }}
+
+            Branching rules (non-negotiable):
+            - Branch name: claude/issue-${{ steps.issue.outputs.number }}
+            - Create branch: git checkout -B "claude/issue-${{ steps.issue.outputs.number }}"
+            - Push with: git push -u origin "claude/issue-${{ steps.issue.outputs.number }}" --force-with-lease
+
+            Objective:
+            - Implement the task described above.
+            - Write tests if applicable.
+            - Commit and push. Do NOT open a PR.
+
+      # 5. Create PR
+      - name: Create PR
+        if: steps.notion.outputs.found == 'true'
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: claude/issue-${{ steps.issue.outputs.number }}
+          ISSUE_NUMBER: ${{ steps.issue.outputs.number }}
+        run: |
+          if ! git ls-remote --exit-code --heads origin "${BRANCH}" >/dev/null 2>&1; then
+            echo "Branch not found. Claude may not have pushed changes."
+            echo "created=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          PR_URL=$(gh pr create \
+            --head "${BRANCH}" --base "main" \
+            --title "AI: ${{ steps.notion.outputs.title }}" \
+            --body "Automated PR for issue #${ISSUE_NUMBER}. Triggered from Notion kanban." \
+            --json url --jq '.url' 2>/dev/null || echo "")
+          echo "url=$PR_URL" >> $GITHUB_OUTPUT
+          echo "created=true" >> $GITHUB_OUTPUT
+
+      # 6. Update Notion → Done + link PR
+      - name: Update Notion to Done
+        if: steps.notion.outputs.found == 'true'
+        env:
+          PR_URL: ${{ steps.pr.outputs.url }}
+          PAGE_ID: ${{ steps.notion.outputs.page_id }}
+        run: |
+          # Build the update payload
+          if [ -n "$PR_URL" ]; then
+            PAYLOAD='{"properties":{"Status":{"status":{"name":"Done"}},"GitHub PR":{"url":"'"$PR_URL"'"}}}'
+          else
+            PAYLOAD='{"properties":{"Status":{"status":{"name":"Done"}}}}'
+          fi
+          curl -s -X PATCH \
+            "https://api.notion.com/v1/pages/$PAGE_ID" \
+            -H "Authorization: Bearer ${{ secrets.NOTION_API_KEY }}" \
+            -H "Notion-Version: 2022-06-28" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
