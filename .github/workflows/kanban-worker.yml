@@ -65,6 +65,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ISSUE_URL=$(gh issue create \
+            --repo "${{ github.repository }}" \
             --title "${{ steps.notion.outputs.title }}" \
             --body "${{ steps.notion.outputs.description }}")
           ISSUE_NUMBER=$(echo "$ISSUE_URL" | grep -oE '[0-9]+$')
