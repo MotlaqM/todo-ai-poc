@@ -123,10 +123,11 @@ jobs:
             exit 0
           fi
           PR_URL=$(gh pr create \
+            --repo "${{ github.repository }}" \
             --head "${BRANCH}" --base "main" \
             --title "AI: ${{ steps.notion.outputs.title }}" \
-            --body "Automated PR for issue #${ISSUE_NUMBER}. Triggered from Notion kanban." \
-            --json url --jq '.url' 2>/dev/null || echo "")
+            --body "Automated PR for issue #${ISSUE_NUMBER}. Triggered from Notion kanban." 2>&1 || echo "")
+          # PR_URL is the full URL printed by gh pr create
           echo "url=$PR_URL" >> $GITHUB_OUTPUT
           echo "created=true" >> $GITHUB_OUTPUT
 
