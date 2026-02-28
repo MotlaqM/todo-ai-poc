@@ -220,6 +220,87 @@ describe('App', () => {
     expect(screen.getByText('Persistent task')).toBeInTheDocument();
   });
 
+  describe('Completed todos count', () => {
+    it('shows 0 completed when no todos exist', () => {
+      render(<App />);
+      expect(screen.getByTestId('completed-count')).toHaveTextContent('Completed: 0 / 0');
+    });
+
+    it('shows 0 completed when todos are added but none checked', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+
+      const input = screen.getByPlaceholderText('Enter a todo...');
+      await user.type(input, 'Task 1{Enter}');
+      await user.type(input, 'Task 2{Enter}');
+
+      expect(screen.getByTestId('completed-count')).toHaveTextContent('Completed: 0 / 2');
+    });
+
+    it('increments completed count when a todo is checked', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+
+      const input = screen.getByPlaceholderText('Enter a todo...');
+      await user.type(input, 'Task A{Enter}');
+      await user.type(input, 'Task B{Enter}');
+
+      const checkboxes = screen.getAllByRole('checkbox');
+      await user.click(checkboxes[0]);
+
+      expect(screen.getByTestId('completed-count')).toHaveTextContent('Completed: 1 / 2');
+    });
+
+    it('decrements completed count when a todo is unchecked', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+
+      const input = screen.getByPlaceholderText('Enter a todo...');
+      await user.type(input, 'Task A{Enter}');
+
+      const checkbox = screen.getByRole('checkbox');
+      await user.click(checkbox); // check
+      expect(screen.getByTestId('completed-count')).toHaveTextContent('Completed: 1 / 1');
+
+      await user.click(checkbox); // uncheck
+      expect(screen.getByTestId('completed-count')).toHaveTextContent('Completed: 0 / 1');
+    });
+
+    it('shows all completed when all todos are checked', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+
+      const input = screen.getByPlaceholderText('Enter a todo...');
+      await user.type(input, 'Task A{Enter}');
+      await user.type(input, 'Task B{Enter}');
+
+      const checkboxes = screen.getAllByRole('checkbox');
+      await user.click(checkboxes[0]);
+      await user.click(checkboxes[1]);
+
+      expect(screen.getByTestId('completed-count')).toHaveTextContent('Completed: 2 / 2');
+    });
+
+    it('updates completed count when a completed todo is deleted', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+
+      const input = screen.getByPlaceholderText('Enter a todo...');
+      await user.type(input, 'Task A{Enter}');
+      await user.type(input, 'Task B{Enter}');
+
+      const checkboxes = screen.getAllByRole('checkbox');
+      await user.click(checkboxes[0]); // complete Task A
+
+      expect(screen.getByTestId('completed-count')).toHaveTextContent('Completed: 1 / 2');
+
+      const deleteButtons = screen.getAllByText('Delete');
+      await user.click(deleteButtons[0]); // delete Task A
+
+      expect(screen.getByTestId('completed-count')).toHaveTextContent('Completed: 0 / 1');
+    });
+  });
+
   describe('Acceptance Criteria - TODO-1', () => {
     describe('AC1: User can type a todo item and submit it', () => {
       it('submits todo via Add button and item appears in list', async () => {

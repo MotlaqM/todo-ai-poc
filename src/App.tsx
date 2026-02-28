@@ -48,10 +48,27 @@ function App() {
     setTodos([]);
   };
 
+  const completedCount = todos.filter((todo) => todo.completed).length;
+
   return (
     <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
       <h1>To-Do List</h1>
       <p>Total todos: {todos.length}</p>
+      <p
+        style={{
+          fontWeight: 'bold',
+          fontSize: '1.1em',
+          color: completedCount > 0 ? '#2a7a2a' : '#888',
+          background: completedCount > 0 ? '#e6f4e6' : '#f5f5f5',
+          display: 'inline-block',
+          padding: '4px 12px',
+          borderRadius: '4px',
+          marginBottom: '8px',
+        }}
+        data-testid="completed-count"
+      >
+        Completed: {completedCount} / {todos.length}
+      </p>
 
       <div style={{ marginBottom: '20px' }}>
         <input
