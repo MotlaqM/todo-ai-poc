@@ -84,27 +84,12 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           show_full_output: true
           claude_args: "--max-turns 25"
-          additional_permissions: |
-            Edit
-            MultiEdit
-            Glob
-            Grep
-            Read
-            Write
-            Bash(git add:*)
-            Bash(git checkout:*)
-            Bash(git commit:*)
-            Bash(git push:*)
-            Bash(git status:*)
-            Bash(git diff:*)
-            Bash(git log:*)
-            Bash(git branch:*)
-            Bash(git rm:*)
-            Bash(npm install:*)
-            Bash(npm run:*)
-            Bash(npm test:*)
-            Bash(cat:*)
-            Bash(echo:*)
+          settings: |
+            {
+              "permissions": {
+                "allow": ["Bash", "Read", "Write", "Edit", "MultiEdit", "Glob", "Grep"]
+              }
+            }
           prompt: |
             You are Claude Code running inside GitHub Actions.
 
