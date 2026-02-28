@@ -122,14 +122,22 @@ jobs:
             echo "created=false" >> $GITHUB_OUTPUT
             exit 0
           fi
-          PR_URL=$(gh pr create \
+          echo "Creating PR from ${BRANCH} to main..."
+          PR_OUTPUT=$(gh pr create \
             --repo "${{ github.repository }}" \
             --head "${BRANCH}" --base "main" \
             --title "AI: ${{ steps.notion.outputs.title }}" \
-            --body "Automated PR for issue #${ISSUE_NUMBER}. Triggered from Notion kanban." 2>&1 || echo "")
-          # PR_URL is the full URL printed by gh pr create
-          echo "url=$PR_URL" >> $GITHUB_OUTPUT
-          echo "created=true" >> $GITHUB_OUTPUT
+            --body "Automated PR for issue #${ISSUE_NUMBER}. Triggered from Notion kanban." 2>&1) || true
+          echo "gh pr create output: $PR_OUTPUT"
+          PR_URL=$(echo "$PR_OUTPUT" | grep -oE 'https://github.com/[^ ]+/pull/[0-9]+' | head -1)
+          if [ -n "$PR_URL" ]; then
+            echo "PR created: $PR_URL"
+            echo "url=$PR_URL" >> $GITHUB_OUTPUT
+            echo "created=true" >> $GITHUB_OUTPUT
+          else
+            echo "PR creation failed or no URL found in output."
+            echo "created=false" >> $GITHUB_OUTPUT
+          fi
 
       # 6. Update Notion → Done + link PR
       - name: Update Notion to Done
